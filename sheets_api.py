@@ -25,8 +25,6 @@ class SheetsApi:
             log = json.load(lc)
             logging.config.dictConfig(log)
         self.log = logging.getLogger('SheetsApi')
-        self.date = datetime.today().strftime('%Y-%m-%d')
-        self.month = datetime.today().strftime('%Y-%m')
         self.__init_api()
 
     def __init_api(self):
@@ -62,6 +60,28 @@ class SheetsApi:
         self.service = build(api, version, credentials=creds)
         self.log.debug(f'Setup completed with {api}')
 
+    def __get_current_dates(self):
+        """
+        Gets current date in full format (e.g 2019-08-07) and current month (e.g 2019-08)
+        :return nothing.
+        """
+        self.date = datetime.today().strftime('%Y-%m-%d')
+        self.month = datetime.today().strftime('%Y-%m')
+
+    def __get_sheet_id(self):
+        """
+        For inserting note to cell we need spreadsheet sheetid which differs depending on 
+        selected sheet. This method get current sheet by finding correct month.
+        :return str
+        """
+        sheet_metadata = self.service.spreadsheets().get(spreadsheetId=self.spreadsheet_id).execute()
+        sheets = sheet_metadata.get('sheets', '')
+        month = datetime.today().strftime('%Y-%m')
+        for i in range(len(sheets[1].get("properties", {}).get("title", "Sheet1"))):
+            title = sheets[i].get("properties", {}).get("title", "Sheet1")
+            if title == self.month:
+                return sheets[i].get('properties', {}).get('sheetId',0)
+
     def __loop_through(self, service):
         """
         By specified service goes to spreadsheet cell until finds a match
@@ -69,15 +89,13 @@ class SheetsApi:
         :param service: Google Sheets API service instance
         :return: cell. Cell which matches with todays date.
         """
-        date = datetime.today().strftime('%Y-%m-%d')
-        month = datetime.today().strftime('%Y-%m')
         for number in [3, 10, 17, 24]:  # Week rows
             for letter in ascii_uppercase[7:14]:  # Range from H to N
                 cell = f'{letter}{number}'
-                result = service.spreadsheets().values().get(spreadsheetId=self.spreadsheet_id,
-                                                             range=f'{month}!{cell}').execute()
+                result = self.service.spreadsheets().values().get(spreadsheetId=self.spreadsheet_id,
+                                                             range=f'{self.month}!{cell}').execute()
                 date_in_spreadsheet = result.get('values', [])
-                if date_in_spreadsheet[0][0] == date:
+                if date_in_spreadsheet[0][0] == self.date:
                     self.log.debug(f'Got cell {cell}')
                     return cell
 
@@ -159,13 +177,13 @@ class SheetsApi:
         :return nothing.
         """
         self.log.debug('Writting to sheet ..')
+        self.__get_current_dates()
         cell_range = self.__loop_through(self.service)  # Find week
         cell_and_number = self.__increase_cell_number(cell_range, 2)  # Find start position
-        month = datetime.today().strftime('%Y-%m')
 
         for receipt in receipts:
             cost = []
-            if not receipt[0] == datetime.today().strftime('%Y-%m-%d'):
+            if not receipt[0] == self.date:
                 continue
             for items in receipt[1:]:
                 if isinstance(items, list):
@@ -175,7 +193,7 @@ class SheetsApi:
                             {
                                 "repeatCell": {
                                     "range": {
-                                        "sheetId": 1502489095,  # this is the end bit of the url
+                                        "sheetId": self.__get_sheet_id(),  # this is the end bit of the url
                                         "startRowIndex": startRowIndex,
                                         "endRowIndex": endRowIndex,
                                         "startColumnIndex": startColumnIndex,
@@ -194,5 +212,5 @@ class SheetsApi:
                        'values': cost
                     }
                     self.log.debug('Updating sheet .. ')
-                    self.__update_sheet(body, f'{month}!{cell_and_number}')
+                    self.__update_sheet(body, f'{self.month}!{cell_and_number}')
             cell_and_number = self.__increase_cell_number(cell_and_number, 1)
