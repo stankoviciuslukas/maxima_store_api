@@ -2,9 +2,27 @@ from gmail_api import GmailApi
 from sheets_api import SheetsApi
 from threading import Timer
 from datetime import datetime
+from bs4 import BeautifulSoup
+import requests
 import logging
 import logging.config
 import json
+import re
+import random
+
+def get_fortune():
+    """
+    Gets todays fortune by executing curl to myfortunecookie.co.uk site
+    Parses request for fortune string output
+    :return str. Fortune cookie string
+    """
+    rnd_num = random.randint(1,152)
+    req = requests.get(f'http://www.myfortunecookie.co.uk/fortunes/{rnd_num}/')
+    soup = BeautifulSoup(req.text, 'lxml')
+    fortune = soup.find_all('div', {'class':'fortune'})[0]
+    clean = re.compile('<.*?>')
+    return re.sub(clean, '', str(fortune))
+
 
 class MainApp:
 
@@ -36,7 +54,8 @@ class MainApp:
         self.sheets.write_to_sheet(receipts)
         self.log.info('Writting to spreadsheet completed!')
         balance = self.sheets.get_weekly_balance()
-        text = f'Labas,\nSavaitės likutis: {balance}'
+        fortune = get_fortune()
+        text = f'Labas,\nSavaitės likutis: {balance}\n\nŠios dienos palinkėjimas: {fortune}'
         mes = self.gmail.create_message('maxima.test.api@gmail.com', 'lukas.stankovicius@gmail.com', 'FINANSAI: Likęs balansas savaitei', text)
         self.gmail.send_message('me', mes)
         self.start()
