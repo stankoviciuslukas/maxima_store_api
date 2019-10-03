@@ -150,19 +150,17 @@ class SheetsApi:
         :return str. Weekly balance.
         """
         
-        day = int(datetime.today().strftime('%d'))
-
+        current_date = datetime.strptime(self.date, '%Y-%m-%d')
         for row in [19, 20, 21, 22]:
             w_start = self.service.spreadsheets().values().get(spreadsheetId=self.spreadsheet_id,
                                                             range=f'{self.month}!B{row}').execute()
             w_end = self.service.spreadsheets().values().get(spreadsheetId=self.spreadsheet_id,
                                                             range=f'{self.month}!C{row}').execute()
-            w_start = int(w_start.get('values')[0][0].split('-')[-1])
-            w_end = int(w_end.get('values')[0][0].split('-')[-1])
 
-            if w_start <= day <= w_end:
+            w_start = datetime.strptime(w_start.get('values')[0][0], "%Y-%m-%d")
+            w_end = datetime.strptime(w_end.get('values')[0][0], "%Y-%m-%d")
+            if w_start <= current_date <= w_end:
                 cell = f'{self.month}!E{row}'
-        
         balance = self.service.spreadsheets().values().get(spreadsheetId=self.spreadsheet_id,
                                                             range=cell).execute().get('values')
         return balance[0][0].replace(' ','')

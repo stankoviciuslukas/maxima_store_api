@@ -19,7 +19,10 @@ def get_fortune():
     rnd_num = random.randint(1,152)
     req = requests.get(f'http://www.myfortunecookie.co.uk/fortunes/{rnd_num}/')
     soup = BeautifulSoup(req.text, 'lxml')
-    fortune = soup.find_all('div', {'class':'fortune'})[0]
+    try:
+        fortune = soup.find_all('div', {'class':'fortune'})[0]
+    except IndexError:
+        get_fortune()
     clean = re.compile('<.*?>')
     return re.sub(clean, '', str(fortune))
 
@@ -103,4 +106,4 @@ class MainApp:
 
 if __name__ == '__main__':
     m = MainApp("22:25:00")
-    m.start()
+    m.start(False)
