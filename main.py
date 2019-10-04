@@ -1,5 +1,6 @@
 from gmail_api import GmailApi
 from sheets_api import SheetsApi
+from postgre import PostgreSQL
 from threading import Timer
 from datetime import datetime
 from bs4 import BeautifulSoup
@@ -36,6 +37,7 @@ class MainApp:
         """
         self.gmail = GmailApi()
         self.sheets = SheetsApi()
+        self.postgre = PostgreSQL()
         self.is_running = False
         self.start_time = start_time
         with open('logging.conf', 'r') as lc:
@@ -53,6 +55,7 @@ class MainApp:
         self.is_running = False
         receipts = self.gmail.get_receipts()
         self.log.info('Got receipts!')
+        self.postgre.insert_data(receipts)
         self.log.info('Starting to write to Google Sheets spreadsheet .. ')
         self.sheets.write_to_sheet(receipts)
         self.log.info('Writting to spreadsheet completed!')
