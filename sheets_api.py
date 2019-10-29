@@ -89,6 +89,7 @@ class SheetsApi:
         :param service: Google Sheets API service instance
         :return: cell. Cell which matches with todays date.
         """
+        self.month = '2019-11'
         for number in [3, 10, 17, 24]:  # Week rows
             for letter in ascii_uppercase[7:14]:  # Range from H to N
                 cell = f'{letter}{number}'
